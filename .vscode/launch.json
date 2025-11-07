@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:clipper}",
+            "name": "Debug Clipper",
+            "target": "Clipper",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Clipper"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:clipper}",
+            "name": "Release Clipper",
+            "target": "Clipper",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Clipper"
+        }
+    ]
+}
