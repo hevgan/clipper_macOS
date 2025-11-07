@@ -41,13 +41,14 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.showsResizeIndicator = true
-        let shadowContainer = ShadowContainerView(hosting: hosting)
-        window.contentView = shadowContainer
-        shadowContainer.pinHosting()
+        window.contentViewController = hosting
+        hosting.view.wantsLayer = true
+        hosting.view.layer?.backgroundColor = NSColor.clear.cgColor
 
         super.init()
 
         window.delegate = self
+        configureWindowMask()
         accessibilityManager = AccessibilityPermissionManager { [weak self] granted in
             self?.hotkeyManager.updatePermission(granted: granted)
         }
@@ -95,6 +96,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         window.setFrameOrigin(origin)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+        configureWindowMask()
         windowIsVisible = true
         installAutoCloseMonitors()
     }
@@ -106,8 +108,6 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         removeAutoCloseMonitors()
     }
 
-    private func configureFrameViewLayer() {}
-    private func updateFrameShadowPath() {}
 
     private func installAutoCloseMonitors() {
         removeAutoCloseMonitors()
@@ -148,97 +148,27 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     deinit {
         removeAutoCloseMonitors()
     }
-}
 
-final class ShadowContainerView: NSView {
-    private let hosting: NSHostingController<PopoverContentView>
-    private let effectView: NSVisualEffectView
-    private let maskLayer: CAShapeLayer
+    private func configureWindowMask() {
+        guard let frameView = window.contentView?.superview else { return }
+        let radius: CGFloat = 20
+        frameView.wantsLayer = true
+        frameView.layer?.masksToBounds = true
+        frameView.layer?.cornerRadius = radius
+        frameView.layer?.backgroundColor = NSColor.clear.cgColor
+        window.contentView?.wantsLayer = true
+        window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
 
-    init(hosting: NSHostingController<PopoverContentView>) {
-        self.hosting = hosting
-        effectView = NSVisualEffectView(frame: hosting.view.bounds)
-        effectView.blendingMode = .withinWindow
-        effectView.material = .hudWindow
-        effectView.state = .active
-        effectView.wantsLayer = true
-
-        maskLayer = CAShapeLayer()
-        maskLayer.fillColor = NSColor.white.cgColor
-        maskLayer.cornerRadius = 18
-
-        super.init(frame: hosting.view.bounds)
-
-        wantsLayer = true
-        layer?.masksToBounds = false
-        layer?.shadowColor = NSColor.black.withAlphaComponent(0.25).cgColor
-        layer?.shadowOpacity = 1
-        layer?.shadowRadius = 30
-        layer?.shadowOffset = CGSize(width: 0, height: -20)
-
-        addSubview(effectView)
-        effectView.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            effectView.topAnchor.constraint(equalTo: topAnchor),
-            effectView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            effectView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            effectView.trailingAnchor.constraint(equalTo: trailingAnchor)
-        ])
-
-        effectView.addSubview(hosting.view)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func layout() {
-        super.layout()
-        let path = NSBezierPath(roundedRect: bounds, xRadius: 18, yRadius: 18)
-        maskLayer.path = path.cgPathValue
-        effectView.layer?.mask = maskLayer
-        layer?.shadowPath = maskLayer.path
-    }
-
-    func pinHosting() {
-        hosting.view.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            hosting.view.topAnchor.constraint(equalTo: effectView.topAnchor),
-            hosting.view.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
-            hosting.view.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
-            hosting.view.trailingAnchor.constraint(equalTo: effectView.trailingAnchor)
-        ])
-        effectView.layer?.mask = maskLayer
-    }
-}
-
-private extension NSBezierPath {
-    var cgPathValue: CGPath {
-        let path = CGMutablePath()
-        var points = [NSPoint](repeating: .zero, count: 3)
-
-        for index in 0..<elementCount {
-            switch element(at: index, associatedPoints: &points) {
-            case .moveTo:
-                path.move(to: points[0])
-            case .lineTo:
-                path.addLine(to: points[0])
-            case .curveTo, .cubicCurveTo:
-                path.addCurve(to: points[2], control1: points[0], control2: points[1])
-            case .quadraticCurveTo:
-                path.addQuadCurve(to: points[1], control: points[0])
-            case .closePath:
-                path.closeSubpath()
-            @unknown default:
-                break
-            }
+        if let visualEffectView = frameView.superview {
+            visualEffectView.wantsLayer = true
+            visualEffectView.layer?.backgroundColor = NSColor.clear.cgColor
+            visualEffectView.layer?.cornerRadius = radius
+            visualEffectView.layer?.masksToBounds = true
         }
-
-        return path
     }
 }
 
-struct PopoverContentView: View {
+private struct PopoverContentView: View {
     @ObservedObject var history: ClipboardHistory
     let openAccessibility: () -> Void
 
