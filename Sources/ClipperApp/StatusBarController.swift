@@ -6,6 +6,8 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let statusItem: NSStatusItem
     private let history: ClipboardHistory
+    private let settings: SettingsStore
+    private lazy var settingsWindowController = SettingsWindowController(settings: settings)
     private lazy var hotkeyManager = GlobalHotkeyManager { [weak self] event in
         self?.toggleWindow(for: event)
     }
@@ -13,14 +15,12 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     private var windowIsVisible = false
     private var mouseDownMonitor: Any?
     private var escapeMonitor: Any?
-
-    init(history: ClipboardHistory) {
+    init(history: ClipboardHistory, settings: SettingsStore) {
         self.history = history
+        self.settings = settings
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
-        let contentView = PopoverContentView(history: history) {
-            AccessibilityPermissionManager.openAccessibilityPreferences()
-        }
+        let contentView = PopoverContentView(history: history)
         let hosting = NSHostingController(rootView: contentView)
         hosting.view.frame = .init(origin: .zero, size: NSSize(width: 360, height: 360))
         hosting.view.autoresizingMask = [.width, .height]
@@ -57,12 +57,22 @@ final class StatusBarController: NSObject, NSWindowDelegate {
             button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Clipper clipboard history")
             button.action = #selector(handleStatusItemTap(_:))
             button.target = self
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.toolTip = "Clipper"
         }
     }
 
     @objc private func handleStatusItemTap(_ sender: Any?) {
-        toggleWindow(for: nil)
+        guard let event = NSApp.currentEvent else {
+            toggleWindow(for: nil)
+            return
+        }
+
+        if event.type == .rightMouseUp {
+            presentContextMenu(using: event)
+        } else {
+            toggleWindow(for: event)
+        }
     }
 
     private func toggleWindow(for event: NSEvent?) {
@@ -71,11 +81,32 @@ final class StatusBarController: NSObject, NSWindowDelegate {
             return
         }
 
-        let cursorLocation = event?.locationInWindow ?? NSEvent.mouseLocation
-        showWindow(at: cursorLocation)
+        let (anchorPoint, isStatusButton) = anchor(for: event)
+        showWindow(at: anchorPoint, fromStatusItem: isStatusButton)
     }
 
-    private func showWindow(at screenPoint: NSPoint) {
+    private func anchor(for event: NSEvent?) -> (NSPoint, Bool) {
+        if let button = statusItem.button, event?.window === button.window {
+            let anchor = buttonAnchorPoint(button)
+            return (anchor, true)
+        }
+
+        if let event, let window = event.window {
+            let point = window.convertPoint(toScreen: event.locationInWindow)
+            return (point, false)
+        }
+
+        return (NSEvent.mouseLocation, false)
+    }
+
+    private func buttonAnchorPoint(_ button: NSStatusBarButton) -> NSPoint {
+        guard let window = button.window else { return NSEvent.mouseLocation }
+        var point = NSPoint(x: button.bounds.midX, y: button.bounds.minY)
+        point = window.convertPoint(toScreen: point)
+        return point
+    }
+
+    private func showWindow(at screenPoint: NSPoint, fromStatusItem: Bool) {
         let windowSize = window.frame.size
         guard let screen = NSScreen.screens.first(where: { NSPointInRect(screenPoint, $0.frame) }) ?? NSScreen.main else {
             return
@@ -83,7 +114,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
 
         var origin = NSPoint(
             x: screenPoint.x - windowSize.width / 2,
-            y: screenPoint.y - windowSize.height - 16
+            y: screenPoint.y - windowSize.height - (fromStatusItem ? 6 : 16)
         )
         let minX = screen.frame.minX + 12
         let maxX = screen.frame.maxX - windowSize.width - 12
@@ -149,6 +180,27 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         removeAutoCloseMonitors()
     }
 
+    private lazy var contextMenu: NSMenu = {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettingsFromMenu(_:)), keyEquivalent: ",")
+        settingsItem.target = self
+        let accessibilityItem = NSMenuItem(title: "Accessibility…", action: #selector(openAccessibility), keyEquivalent: "")
+        accessibilityItem.target = self
+        let quitItem = NSMenuItem(title: "Quit Clipper", action: #selector(quit), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(settingsItem)
+        menu.addItem(accessibilityItem)
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(quitItem)
+        return menu
+    }()
+
+    private func presentContextMenu(using event: NSEvent) {
+        guard let button = statusItem.button else { return }
+        NSMenu.popUpContextMenu(contextMenu, with: event, for: button)
+    }
+
     private func configureWindowMask() {
         guard let frameView = window.contentView?.superview else { return }
         let radius: CGFloat = 20
@@ -166,43 +218,41 @@ final class StatusBarController: NSObject, NSWindowDelegate {
             visualEffectView.layer?.masksToBounds = true
         }
     }
+
+    @objc private func openSettings() {
+        NSLog("Opening settings window")
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.settingsWindowController.showWindow(relativeTo: self.statusItem.button)
+        }
+    }
+
+    @objc private func openSettingsFromMenu(_ sender: Any?) {
+        openSettings()
+    }
+
+    @objc private func openAccessibility() {
+        AccessibilityPermissionManager.openAccessibilityPreferences()
+    }
+
+    @objc private func quit() {
+        NSApp.terminate(nil)
+    }
 }
 
 private struct PopoverContentView: View {
     @ObservedObject var history: ClipboardHistory
-    let openAccessibility: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            ClipboardHistoryView(history: history)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Divider()
-            MenuBarFooter(openAccessibility: openAccessibility)
-        }
-        .padding(12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.45), lineWidth: 0.75)
-        )
-        .shadow(color: Color.black.opacity(0.25), radius: 30, x: 0, y: 15)
-    }
-}
-
-struct MenuBarFooter: View {
-    let openAccessibility: () -> Void
-
-    var body: some View {
-        HStack {
-            Text("⌘⇧V opens the history")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button("Accessibility…", action: openAccessibility)
-            Button("Quit") { NSApp.terminate(nil) }
-        }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 6)
+        ClipboardHistoryView(history: history)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(12)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.45), lineWidth: 0.75)
+            )
+            .shadow(color: Color.black.opacity(0.25), radius: 30, x: 0, y: 15)
     }
 }
 

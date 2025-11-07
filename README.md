@@ -12,6 +12,9 @@ Clipper is a lightweight macOS menu bar helper inspired by the Windows clipboard
 - History for the 30 most recent clipboard entries, including plain text and screenshots/images.
 - One-click paste: selecting an entry copies it back to the pasteboard and sends a `⌘V`.
 - Per-item privacy controls to censor (mask with `*`) or delete individual entries.
+- Simple Settings window with a slider to choose how many entries to keep (1–50), and a blacklist that lets you opt-out of capturing from specific apps.
+- Full image support: screenshots and copied images (PNG/TIFF, even file URLs from macOS screenshots) are stored in history and can be re-pasted like text.
+- Simple Settings panel (right-click the menu bar icon or open macOS Settings) with a slider to choose how many items to keep (1–50).
 - Optional Accessibility shortcut to request the system permission needed for the global hotkey.
 
 ## Requirements
@@ -38,6 +41,7 @@ The global hotkey relies on the macOS Accessibility API. The first time Clipper 
 
 ## Roadmap Ideas
 
+- Integrate with Handoff (have things copied from other devices).
 - Persist history between launches (optional).
 - Add search/filter across historical entries.
 - Provide a settings pane for history length and visual customization.

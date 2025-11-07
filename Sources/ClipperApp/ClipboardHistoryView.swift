@@ -58,6 +58,12 @@ private struct ClipboardEntryRow: View {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 6) {
                     content
+                    if let fileName = entry.fileName {
+                        Text(entry.wasCopied ? "Copied to clipboard" : fileName)
+                            .font(.caption)
+                            .foregroundStyle(entry.wasCopied ? .green : .secondary)
+                            .lineLimit(1)
+                    }
                     Text(entry.timestamp, style: .time)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -92,7 +98,7 @@ private struct ClipboardEntryRow: View {
             Image(nsImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 60, height: 60)
+                .frame(width: 78, height: 78)
                 .cornerRadius(6)
         }
     }
