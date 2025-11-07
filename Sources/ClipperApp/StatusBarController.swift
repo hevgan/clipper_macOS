@@ -150,6 +150,68 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     }
 }
 
+final class ShadowContainerView: NSView {
+    private let hosting: NSHostingController<PopoverContentView>
+    private let effectView: NSVisualEffectView
+    private let maskLayer: CAShapeLayer
+
+    init(hosting: NSHostingController<PopoverContentView>) {
+        self.hosting = hosting
+        effectView = NSVisualEffectView(frame: hosting.view.bounds)
+        effectView.blendingMode = .withinWindow
+        effectView.material = .hudWindow
+        effectView.state = .active
+        effectView.wantsLayer = true
+
+        maskLayer = CAShapeLayer()
+        maskLayer.fillColor = NSColor.white.cgColor
+        maskLayer.cornerRadius = 18
+
+        super.init(frame: hosting.view.bounds)
+
+        wantsLayer = true
+        layer?.masksToBounds = false
+        layer?.shadowColor = NSColor.black.withAlphaComponent(0.25).cgColor
+        layer?.shadowOpacity = 1
+        layer?.shadowRadius = 30
+        layer?.shadowOffset = CGSize(width: 0, height: -20)
+
+        addSubview(effectView)
+        effectView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            effectView.topAnchor.constraint(equalTo: topAnchor),
+            effectView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            effectView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            effectView.trailingAnchor.constraint(equalTo: trailingAnchor)
+        ])
+
+        effectView.addSubview(hosting.view)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layout() {
+        super.layout()
+        let path = NSBezierPath(roundedRect: bounds, xRadius: 18, yRadius: 18)
+        maskLayer.path = path.cgPathValue
+        effectView.layer?.mask = maskLayer
+        layer?.shadowPath = maskLayer.path
+    }
+
+    func pinHosting() {
+        hosting.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            hosting.view.topAnchor.constraint(equalTo: effectView.topAnchor),
+            hosting.view.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
+            hosting.view.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
+            hosting.view.trailingAnchor.constraint(equalTo: effectView.trailingAnchor)
+        ])
+        effectView.layer?.mask = maskLayer
+    }
+}
+
 private extension NSBezierPath {
     var cgPathValue: CGPath {
         let path = CGMutablePath()
@@ -176,7 +238,7 @@ private extension NSBezierPath {
     }
 }
 
-private struct PopoverContentView: View {
+struct PopoverContentView: View {
     @ObservedObject var history: ClipboardHistory
     let openAccessibility: () -> Void
 
