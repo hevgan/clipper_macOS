@@ -91,7 +91,7 @@ private struct ClipboardEntryRow: View {
             let preview = entry.isCensored ? entry.censoredPreview : entry.textPreview
             Text(preview)
                 .font(.body)
-                .lineLimit(2)
+                .lineLimit(6)
                 .multilineTextAlignment(.leading)
         case .image(let image):
             if entry.isCensored {
@@ -127,7 +127,7 @@ private struct ClipboardEntryRow: View {
     }
 
     private var entryInfoText: (text: String, color: Color)? {
-        if entry.wasCopied {
+        if case .image = entry.content, entry.wasCopied {
             return ("Copied directly to clipboard", .green)
         }
         if let fileName = entry.fileName {

@@ -294,11 +294,6 @@ extension ClipboardEntry {
         }
 
         let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.count > 120 {
-            let endIndex = trimmed.index(trimmed.startIndex, offsetBy: 120)
-            return "\(trimmed[..<endIndex])…"
-        }
-
         return trimmed
     }
 
