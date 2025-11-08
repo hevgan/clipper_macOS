@@ -94,13 +94,17 @@ private struct ClipboardEntryRow: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
         case .image(let image):
-            Image(nsImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: 140, maxHeight: 220)
-                .clipped()
-                .cornerRadius(10)
+            if entry.isCensored {
+                censoredImagePlaceholder
+            } else {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 140, maxHeight: 220)
+                    .clipped()
+                    .cornerRadius(10)
+            }
         }
     }
 
@@ -130,5 +134,26 @@ private struct ClipboardEntryRow: View {
             return (fileName, .secondary)
         }
         return nil
+    }
+
+    private var censoredImagePlaceholder: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.black.opacity(0.25))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.white.opacity(0.4), lineWidth: 1)
+                )
+            VStack(spacing: 4) {
+                Image(systemName: "eye.slash")
+                    .font(.title2)
+                Text("Hidden preview")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: 140, maxHeight: 220)
     }
 }
