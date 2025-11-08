@@ -1,8 +1,12 @@
 # Clipper
 
+![clipper icon](src/icons/clipper-icon.png)
+
+
 Clipper is a lightweight macOS menu bar helper inspired by the Windows clipboard history. It keeps the last 30 items you copy (text or images), presents a quick popover anchored to the cursor, and lets you re-paste with a single click.
 
 ![clipper menu](src/images/clipper-menu.png)
+![clipper bar icon](src/images/clipper-bar-icon.png)
 ![clipper settings](src/images/clipper-settings.png)
 
 
@@ -28,7 +32,25 @@ Clipper is a lightweight macOS menu bar helper inspired by the Windows clipboard
 ```bash
 swift build          # Compile the app
 swift run Clipper    # Launch from the command line
+
+# Build a standalone .app bundle
+cd scripts
+./build-app.sh       # or: bash build-app.sh
+cd ..
+open dist/Clipper.app
+
+# Create a drag-and-drop DMG installer
+cd scripts
+./create-dmg.sh
+cd ..
+open dist/Clipper.dmg
 ```
+
+The build script automatically converts `clipper-menu.png` into a proper macOS `.icns` app icon (using `sips` + `iconutil`). Make sure those Apple command-line tools are available on your machine.
+
+After building, move `dist/Clipper.app` into `/Applications` (or wherever you keep apps) and launch it from Finder. The menu-bar helper runs in the background with no Terminal window. To have it start automatically at login, add the moved app to **System Settings → General → Login Items → Open at Login**.
+
+You can also toggle “Launch Clipper at login” from the in-app settings window; it flips the same Login Items entry programmatically.
 
 Because this is a menu bar utility, keep the terminal session open while testing. The clipboard window shows up near your cursor; use `Esc` or click outside to dismiss it.
 
@@ -40,9 +62,15 @@ The global hotkey relies on the macOS Accessibility API. The first time Clipper 
 2. Enable Clipper (or the terminal app you used to run it).
 3. Restart the helper (`swift run Clipper`) so the hotkey monitor attaches.
 
+Or simply reinstall the application.
+
 ## Roadmap Ideas
 
 - Integrate with Handoff (have things copied from other devices).
 - Persist history between launches (optional).
 - Add search/filter across historical entries.
-- Provide a settings pane for history length and visual customization.
+- Add a download link or a .dmg to blob
+- Refine UI
+
+## Known bugs
+- Copy as path performed on a file copies the file and not the path. (fix: add option to copy either path or the file itself from Clipper)

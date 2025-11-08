@@ -45,6 +45,9 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("History")
                 .font(.headline)
+            Toggle("Launch Clipper at login", isOn: $settings.launchAtLogin)
+                .toggleStyle(SwitchToggleStyle(tint: .accentColor))
+                .padding(.bottom, 8)
             HStack {
                 Text("Items to keep")
                 Spacer()

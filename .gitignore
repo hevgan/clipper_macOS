@@ -1,1 +1,6 @@
 .build/
+
+dist/
+dist/*.icns
+dist/*.iconset
+.DS_Store

@@ -19,6 +19,17 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var launchAtLogin: Bool {
+        didSet {
+            if launchAtLogin {
+                LoginItemManager.enable()
+            } else {
+                LoginItemManager.disable()
+            }
+            defaults.set(launchAtLogin, forKey: Keys.launchAtLogin)
+        }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -28,6 +39,7 @@ final class SettingsStore: ObservableObject {
         self.maxEntries = Self.clamp(initialMax)
         let savedBlacklist = defaults.stringArray(forKey: Keys.blacklist) ?? []
         self.blacklistedBundleIDs = savedBlacklist
+        self.launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
     }
 
     private static func clamp(_ value: Int) -> Int {
@@ -61,5 +73,6 @@ final class SettingsStore: ObservableObject {
     private enum Keys {
         static let maxEntries = "settings.maxEntries"
         static let blacklist = "settings.blacklistedBundleIDs"
+        static let launchAtLogin = "settings.launchAtLogin"
     }
 }
