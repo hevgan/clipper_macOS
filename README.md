@@ -17,9 +17,11 @@ Clipper is a lightweight macOS menu bar helper inspired by the Windows clipboard
 - History for the 30 most recent clipboard entries, including plain text and screenshots/images.
 - One-click paste: selecting an entry copies it back to the pasteboard and sends a `⌘V`.
 - Per-item privacy controls to censor (mask with `*`) or delete individual entries.
-- Simple Settings window with a slider to choose how many entries to keep (1–50), and a blacklist that lets you opt-out of capturing from specific apps.
-- Full image support: screenshots and copied images (PNG/TIFF, even file URLs from macOS screenshots) are stored in history and can be re-pasted like text.
-- Simple Settings panel (right-click the menu bar icon or open macOS Settings) with a slider to choose how many items to keep (1–50).
+- Simple Settings window with a slider to choose how many entries to keep (1–50), a blacklist for ignoring specific apps, a launch-at-login toggle, and Escape-to-close behavior so it feels just like the main popover.
+- File-aware clipboard entries: screenshots, camera captures, and Finder files show live previews that scale to the tile width, preserve original filenames, and expose a path button so you can copy the underlying file path (or paste the image/file) with a single click.
+- Visual status badges tell you whether a screenshot went straight to the clipboard (`⌃⌘⇧3/4` → “Copied directly to clipboard”) or was saved as a file first (`⌘⇧3/4` → shows the generated filename).
+- Refined history cards keep file info/path text and timestamps on a single line beneath each preview while stacking action icons vertically to use the available space more efficiently.
+- Menu-bar context menu (right-click) with quick access to Settings, Accessibility permissions, and Quit.
 - Optional Accessibility shortcut to request the system permission needed for the global hotkey.
 
 ## Requirements
@@ -48,11 +50,15 @@ open dist/Clipper.dmg
 
 The build script automatically converts `clipper-menu.png` into a proper macOS `.icns` app icon (using `sips` + `iconutil`). Make sure those Apple command-line tools are available on your machine.
 
-After building, move `dist/Clipper.app` into `/Applications` (or wherever you keep apps) and launch it from Finder. The menu-bar helper runs in the background with no Terminal window. To have it start automatically at login, add the moved app to **System Settings → General → Login Items → Open at Login**.
+### Installing the app
 
-You can also toggle “Launch Clipper at login” from the in-app settings window; it flips the same Login Items entry programmatically.
+1. Run `./scripts/build-app.sh` to create `dist/Clipper.app`.
+2. (Optional) Run `./scripts/create-dmg.sh` to generate `dist/Clipper.dmg` with a drag-and-drop window so you can copy the app into `/Applications`.
+3. Move the `.app` into `/Applications` and launch it from Finder—no Terminal window required. The helper keeps running in the background.
 
-Because this is a menu bar utility, keep the terminal session open while testing. The clipboard window shows up near your cursor; use `Esc` or click outside to dismiss it.
+You can toggle “Launch Clipper at login” from the in-app settings window; it flips the same Login Items entry under **System Settings → General → Login Items → Open at Login**.
+
+Because this is a menu bar utility, keep the terminal session open while testing via `swift run`. The clipboard window shows up near your cursor; use `Esc` or click outside to dismiss it. When installed as an app, it lives entirely in the menu bar.
 
 ## Accessibility Permission
 
@@ -69,11 +75,11 @@ Or simply reinstall the application.
 - Integrate with Handoff (have things copied from other devices).
 - Persist history between launches (optional).
 - Add search/filter across historical entries.
-- Add a download link or a .dmg to blob
-- Refine UI
-- Add option to build package with xCode 
-- Deploy to AppStore
-- Add CI/CD 
+- Add a download link or a signed .dmg
+- Refine UI/animations further
+- Add option to build package with Xcode
+- Deploy to the App Store
+- Add CI/CD
 
 ## Known bugs
-- Copy as path performed on a file copies the file and not the path. (fix: add option to copy either path or the file itself from Clipper)
+- None reported.

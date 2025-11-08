@@ -1,62 +1,84 @@
 import AppKit
 import SwiftUI
 
-final class SettingsWindowController: NSWindowController, NSWindowDelegate {
-    private let settings: SettingsStore
+private final class SettingsPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
 
-    init(settings: SettingsStore) {
-        self.settings = settings
-        let hosting = NSHostingController(rootView: SettingsView(settings: settings) { })
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 560),
-            styleMask: [.borderless],
+    override func cancelOperation(_ sender: Any?) {
+        (delegate as? SettingsWindowController)?.close()
+    }
+}
+
+final class SettingsWindowController: NSObject, NSWindowDelegate {
+    private let settings: SettingsStore
+    private var escapeMonitor: Any?
+    private lazy var panel: NSPanel = {
+        let content = SettingsView(settings: settings) { [weak self] in
+            self?.close()
+        }
+        let hosting = NSHostingController(rootView: content)
+
+        let panel = SettingsPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 800),
+            styleMask: [.nonactivatingPanel, .hudWindow],
             backing: .buffered,
             defer: false
         )
-        window.isReleasedWhenClosed = false
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = false
-        window.level = .floating
-        window.isMovableByWindowBackground = true
-        super.init(window: window)
-        hosting.rootView = SettingsView(settings: settings) { [weak self] in
-            self?.window?.close()
-        }
-        window.contentViewController = hosting
-        window.delegate = self
+        panel.isFloatingPanel = true
+        panel.hidesOnDeactivate = false
+        panel.level = .floating
+        panel.hasShadow = false
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.isReleasedWhenClosed = false
+        panel.contentViewController = hosting
+        panel.delegate = self
+        panel.becomesKeyOnlyIfNeeded = true
+        panel.acceptsMouseMovedEvents = true
+        panel.isMovableByWindowBackground = true
+        panel.collectionBehavior.insert(.fullScreenAuxiliary)
+        return panel
+    }()
+
+    init(settings: SettingsStore) {
+        self.settings = settings
+        super.init()
     }
 
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    func showWindow(relativeTo button: NSStatusBarButton?) {
-        guard let window else { return }
-
-        window.center()
-        configureWindowMask()
-
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
+    func show(relativeTo button: NSStatusBarButton?) {
+        panel.center()
+        panel.makeKeyAndOrderFront(nil)
+        panel.makeFirstResponder(panel.contentViewController?.view)
+        installEscapeMonitor()
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    func windowWillClose(_ notification: Notification) {
-        window?.orderOut(nil)
+    func close() {
+        panel.orderOut(nil)
+        removeEscapeMonitor()
     }
 
-    private func configureWindowMask() {
-        guard let frameView = window?.contentView?.superview else { return }
-        let radius: CGFloat = 24
-        frameView.wantsLayer = true
-        frameView.layer?.masksToBounds = true
-        frameView.layer?.cornerRadius = radius
-        frameView.layer?.backgroundColor = NSColor.clear.cgColor
-        window?.contentView?.wantsLayer = true
-        window?.contentView?.layer?.cornerRadius = radius
-        window?.contentView?.layer?.masksToBounds = true
-        window?.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
+    func windowDidResignKey(_ notification: Notification) {
+        close()
+    }
+
+    private func installEscapeMonitor() {
+        removeEscapeMonitor()
+        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.panel.isVisible else { return event }
+            if event.keyCode == 53 {
+                self.close()
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func removeEscapeMonitor() {
+        if let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+            escapeMonitor = nil
+        }
     }
 }

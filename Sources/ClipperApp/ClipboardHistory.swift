@@ -64,7 +64,7 @@ final class ClipboardHistory: ObservableObject {
 
     private func addScreenshot(from url: URL) {
         guard let image = NSImage(contentsOf: url) else { return }
-        let entry = ClipboardEntry(image: image, fileName: url.lastPathComponent, wasCopied: true)
+        let entry = ClipboardEntry(image: image, fileURL: url, fileName: url.lastPathComponent, wasCopied: false)
         add(entry)
     }
 
@@ -75,8 +75,21 @@ final class ClipboardHistory: ObservableObject {
         case .text(let string):
             pasteboard.setString(string, forType: .string)
         case .image(let image):
-            pasteboard.writeObjects([image])
+            if let url = entry.fileURL {
+                pasteboard.writeObjects([url as NSURL])
+            } else {
+                pasteboard.writeObjects([image])
+            }
         }
+        lastChangeCount = pasteboard.changeCount
+    }
+
+    func copyPath(_ entry: ClipboardEntry) {
+        guard let url = entry.fileURL else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([url as NSURL])
+        pasteboard.setString(url.path, forType: .string)
         lastChangeCount = pasteboard.changeCount
     }
 
@@ -126,6 +139,7 @@ struct ClipboardEntry: Identifiable {
     let id = UUID()
     let timestamp: Date
     let content: Content
+    let fileURL: URL?
     let fileName: String?
     var wasCopied: Bool
     var isCensored = false
@@ -144,37 +158,45 @@ struct ClipboardEntry: Identifiable {
 
     init?(from pasteboard: NSPasteboard) {
         let timestamp = Date()
-        if let imageResult = Self.imageFromPasteboard(pasteboard) ?? NSImage(pasteboard: pasteboard).map({ ($0, nil) }) {
-            self.content = .image(imageResult.0)
-            self.fileName = imageResult.1
+        if let imageResult = Self.imageFromPasteboard(pasteboard) ?? NSImage(pasteboard: pasteboard).map({ (image: $0, url: nil, fileName: nil) }) {
+            self.content = .image(imageResult.image)
+            self.fileURL = imageResult.url
+            self.fileName = imageResult.fileName ?? imageResult.url?.lastPathComponent
             self.timestamp = timestamp
-            self.wasCopied = false
+            self.wasCopied = imageResult.url == nil
             return
         }
 
         if let text = pasteboard.string(forType: .string), !text.isEmpty {
             self.content = .text(text)
+            self.fileURL = nil
             self.fileName = nil
             self.timestamp = timestamp
-            self.wasCopied = false
+            self.wasCopied = true
             return
         }
 
         self.fileName = nil
+        self.fileURL = nil
         self.wasCopied = false
 
         return nil
     }
 
-    init(image: NSImage, fileName: String?, wasCopied: Bool = false) {
+    init(image: NSImage, fileURL: URL?, fileName: String?, wasCopied: Bool = false) {
         self.content = .image(image)
+        self.fileURL = fileURL
         self.fileName = fileName
         self.timestamp = Date()
         self.isCensored = false
         self.wasCopied = wasCopied
     }
 
-    private static func imageFromPasteboard(_ pasteboard: NSPasteboard) -> (NSImage, String?)? {
+    private static func imageFromPasteboard(_ pasteboard: NSPasteboard) -> (image: NSImage, url: URL?, fileName: String?)? {
+        if let fileBased = imageFromFileEntries(pasteboard) {
+            return fileBased
+        }
+
         let preferredTypes: [NSPasteboard.PasteboardType] = [
             .png,
             .tiff,
@@ -184,31 +206,27 @@ struct ClipboardEntry: Identifiable {
         ]
 
         if let images = pasteboard.readObjects(forClasses: [NSImage.self], options: nil) as? [NSImage], let image = images.first {
-            return (image, nil)
+            return (image: image, url: nil, fileName: nil)
         }
 
         for item in pasteboard.pasteboardItems ?? [] {
             if let type = item.availableType(from: preferredTypes),
                let data = item.data(forType: type),
                let image = NSImage(data: data) {
-                return (image, nil)
-            }
-
-            if let result = imageFromFileTypes(in: item) {
-                return result
+                return (image: image, url: nil, fileName: nil)
             }
 
             if let promisedList = item.propertyList(forType: NSPasteboard.PasteboardType("com.apple.pasteboard.promised-file-url-list")) as? [String] {
                 for path in promisedList {
                     let url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
                     if let image = NSImage(contentsOf: url) {
-                        return (image, url.lastPathComponent)
+                        return (image: image, url: url, fileName: url.lastPathComponent)
                     }
                 }
             }
 
             if let pdfData = item.data(forType: .pdf), let pdfImage = NSImage(data: pdfData) {
-                return (pdfImage, nil)
+                return (image: pdfImage, url: nil, fileName: nil)
             }
         }
 
@@ -216,7 +234,7 @@ struct ClipboardEntry: Identifiable {
             for path in legacyPaths {
                 let url = URL(fileURLWithPath: path)
                 if let image = NSImage(contentsOf: url) {
-                    return (image, url.lastPathComponent)
+                    return (image: image, url: url, fileName: url.lastPathComponent)
                 }
             }
         }
@@ -224,18 +242,27 @@ struct ClipboardEntry: Identifiable {
         return nil
     }
 
-    private static func imageFromFileTypes(in item: NSPasteboardItem) -> (NSImage, String?)? {
+    private static func imageFromFileEntries(_ pasteboard: NSPasteboard) -> (image: NSImage, url: URL?, fileName: String?)? {
+        for item in pasteboard.pasteboardItems ?? [] {
+            if let result = imageFromFileItem(item) {
+                return result
+            }
+        }
+        return nil
+    }
+
+    private static func imageFromFileItem(_ item: NSPasteboardItem) -> (image: NSImage, url: URL?, fileName: String?)? {
         if let fileURLString = item.string(forType: .fileURL) {
             let url = URL(string: fileURLString)?.absoluteURL ?? URL(fileURLWithPath: fileURLString)
             if url.isFileURL, let image = NSImage(contentsOf: url) {
-                return (image, url.lastPathComponent)
+                return (image: image, url: url, fileName: url.lastPathComponent)
             }
         }
 
         if let plainText = item.string(forType: .string),
            let candidateURL = urlFromPathString(plainText),
            let image = NSImage(contentsOf: candidateURL) {
-            return (image, candidateURL.lastPathComponent)
+            return (image: image, url: candidateURL, fileName: candidateURL.lastPathComponent)
         }
 
         return nil

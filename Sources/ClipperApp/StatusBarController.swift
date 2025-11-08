@@ -140,6 +140,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     }
 
 
+
     private func installAutoCloseMonitors() {
         removeAutoCloseMonitors()
         mouseDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -223,7 +224,8 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         NSLog("Opening settings window")
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.settingsWindowController.showWindow(relativeTo: self.statusItem.button)
+            self.closeWindow()
+            self.settingsWindowController.show(relativeTo: self.statusItem.button)
         }
     }
 

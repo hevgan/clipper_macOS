@@ -37,17 +37,18 @@ struct SettingsView: View {
                     .shadow(color: Color.black.opacity(0.35), radius: 40, x: 0, y: 24)
             )
         }
-        .frame(width: 500, height: 520)
+        .frame(width: 600, height: 800)
         .onAppear(perform: refreshBundleIDs)
+        .onExitCommand(perform: onClose)
     }
 
     private var historySection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 18) {
             Text("History")
                 .font(.headline)
             Toggle("Launch Clipper at login", isOn: $settings.launchAtLogin)
                 .toggleStyle(SwitchToggleStyle(tint: .accentColor))
-                .padding(.bottom, 8)
+                .padding(.bottom, 12)
             HStack {
                 Text("Items to keep")
                 Spacer()
@@ -64,6 +65,8 @@ struct SettingsView: View {
                 step: 1
             )
             .labelsHidden()
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
             HStack {
                 Text("1")
                     .font(.caption2)
@@ -77,7 +80,7 @@ struct SettingsView: View {
     }
 
     private var blacklistSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 20) {
             HStack {
                 Text("Blacklist")
                     .font(.headline)
@@ -89,26 +92,26 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .font(.footnote)
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVStack(alignment: .leading, spacing: 14) {
                         ForEach(availableBundleIDs, id: \.self) { bundleID in
-                            HStack(alignment: .center) {
+                            Toggle(isOn: binding(for: bundleID)) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(displayName(for: bundleID))
+                                        .font(.body)
                                     Text(bundleID)
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                 }
-                                Spacer()
-                                Toggle(isOn: binding(for: bundleID)) {
-                                    EmptyView()
-                                }
-                                .toggleStyle(SwitchToggleStyle(tint: .accentColor))
-                                }
-                                .padding(.vertical, 4)
+                                .padding(.trailing, 8)
                             }
+                            .toggleStyle(SwitchToggleStyle(tint: .accentColor))
+                            .padding(.vertical, 4)
                         }
                     }
+                    .padding(.trailing, 8)
+                }
+                .padding(.top, 4)
             }
         }
     }

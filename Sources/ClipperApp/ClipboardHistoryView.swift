@@ -15,7 +15,8 @@ struct ClipboardHistoryView: View {
                                 entry: entry,
                                 onSelect: { history.copyAndPaste(entry) },
                                 onToggleCensored: { history.toggleCensor(entry) },
-                                onDelete: { history.remove(entry) }
+                                onDelete: { history.remove(entry) },
+                                onCopyPath: entry.fileURL != nil ? { history.copyPath(entry) } : nil
                             )
                         }
                     }
@@ -44,6 +45,7 @@ private struct ClipboardEntryRow: View {
     let onSelect: () -> Void
     let onToggleCensored: () -> Void
     let onDelete: () -> Void
+    let onCopyPath: (() -> Void)?
 
     var body: some View {
         ZStack {
@@ -55,29 +57,26 @@ private struct ClipboardEntryRow: View {
                 )
                 .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 6)
 
-            HStack(alignment: .center, spacing: 10) {
-                VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .center, spacing: 10) {
                     content
-                    if let fileName = entry.fileName {
-                        Text(entry.wasCopied ? "Copied to clipboard" : fileName)
-                            .font(.caption)
-                            .foregroundStyle(entry.wasCopied ? .green : .secondary)
-                            .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(spacing: 12) {
+                        if let onCopyPath {
+                            Button(action: onCopyPath) {
+                                Image(systemName: "doc.on.doc")
+                            }
+                        }
+                        Button(action: onToggleCensored) {
+                            Image(systemName: entry.isCensored ? "eye" : "eye.slash")
+                        }
+                        Button(action: onDelete) {
+                            Image(systemName: "trash")
+                        }
                     }
-                    Text(entry.timestamp, style: .time)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    .buttonStyle(.plain)
                 }
-                Spacer()
-                HStack(spacing: 8) {
-                    Button(action: onToggleCensored) {
-                        Image(systemName: entry.isCensored ? "eye" : "eye.slash")
-                    }
-                    Button(action: onDelete) {
-                        Image(systemName: "trash")
-                    }
-                }
-                .buttonStyle(.plain)
+                metadataRow
             }
             .padding(12)
             .contentShape(RoundedRectangle(cornerRadius: 14))
@@ -97,9 +96,39 @@ private struct ClipboardEntryRow: View {
         case .image(let image):
             Image(nsImage: image)
                 .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 78, height: 78)
-                .cornerRadius(6)
+                .scaledToFit()
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 140, maxHeight: 220)
+                .clipped()
+                .cornerRadius(10)
         }
+    }
+
+    private var metadataRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            if let info = entryInfoText {
+                Text(info.text)
+                    .font(.caption)
+                    .foregroundStyle(info.color)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                Spacer(minLength: 0)
+            }
+            Text(entry.timestamp, style: .time)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(alignment: .trailing)
+        }
+    }
+
+    private var entryInfoText: (text: String, color: Color)? {
+        if entry.wasCopied {
+            return ("Copied directly to clipboard", .green)
+        }
+        if let fileName = entry.fileName {
+            return (fileName, .secondary)
+        }
+        return nil
     }
 }
