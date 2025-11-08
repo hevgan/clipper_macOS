@@ -50,6 +50,8 @@ open dist/Clipper.dmg
 
 The build script automatically converts `clipper-menu.png` into a proper macOS `.icns` app icon (using `sips` + `iconutil`). Make sure those Apple command-line tools are available on your machine.
 
+When developing with `swift run`, keep the Terminal session open—Clipper exits when that process ends. Once you install the `.app`, it runs independently in the background: launch it from Finder (or via Login Items) and the menu-bar icon handles everything, no Terminal required.
+
 ### Installing the app
 
 1. Run `./scripts/build-app.sh` to create `dist/Clipper.app`.
@@ -57,8 +59,6 @@ The build script automatically converts `clipper-menu.png` into a proper macOS `
 3. Move the `.app` into `/Applications` and launch it from Finder—no Terminal window required. The helper keeps running in the background.
 
 You can toggle “Launch Clipper at login” from the in-app settings window; it flips the same Login Items entry under **System Settings → General → Login Items → Open at Login**.
-
-Because this is a menu bar utility, keep the terminal session open while testing via `swift run`. The clipboard window shows up near your cursor; use `Esc` or click outside to dismiss it. When installed as an app, it lives entirely in the menu bar.
 
 ## Accessibility Permission
 
@@ -82,4 +82,4 @@ Or simply reinstall the application.
 - Add CI/CD
 
 ## Known bugs
-- None reported.
+- A dark, semi-transparent square may briefly appear behind the Settings window on some macOS versions. (Planned fix: tighten the panel’s backdrop compositing.)
