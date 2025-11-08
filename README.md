@@ -72,6 +72,8 @@ Or simply reinstall the application.
 - Add a download link or a .dmg to blob
 - Refine UI
 - Add option to build package with xCode 
+- Deploy to AppStore
+- Add CI/CD 
 
 ## Known bugs
 - Copy as path performed on a file copies the file and not the path. (fix: add option to copy either path or the file itself from Clipper)
