@@ -21,6 +21,7 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                generalSection
                 historySection
                 Divider()
                     .background(Color.white.opacity(0.3))
@@ -42,13 +43,19 @@ struct SettingsView: View {
         .onExitCommand(perform: onClose)
     }
 
+    private var generalSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("General")
+                .font(.headline)
+            Toggle("Launch Clipper at login", isOn: $settings.launchAtLogin)
+                .toggleStyle(SwitchToggleStyle(tint: .accentColor))
+        }
+    }
+
     private var historySection: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("History")
                 .font(.headline)
-            Toggle("Launch Clipper at login", isOn: $settings.launchAtLogin)
-                .toggleStyle(SwitchToggleStyle(tint: .accentColor))
-                .padding(.bottom, 12)
             HStack {
                 Text("Items to keep")
                 Spacer()
@@ -127,7 +134,14 @@ struct SettingsView: View {
         let running = NSWorkspace.shared.runningApplications
             .compactMap { $0.bundleIdentifier }
         let combined = Array(Set(running + settings.blacklistedBundleIDs))
-        availableBundleIDs = combined.sorted()
+        availableBundleIDs = combined.sorted { lhs, rhs in
+            let lhsApple = lhs.hasPrefix("com.apple.")
+            let rhsApple = rhs.hasPrefix("com.apple.")
+            if lhsApple == rhsApple {
+                return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+            }
+            return rhsApple
+        }
     }
 
     private func displayName(for bundleID: String) -> String {
