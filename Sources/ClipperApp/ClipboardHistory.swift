@@ -84,13 +84,13 @@ final class ClipboardHistory: ObservableObject {
         lastChangeCount = pasteboard.changeCount
     }
 
-    func copyPath(_ entry: ClipboardEntry) {
+    func copyPathAndPaste(_ entry: ClipboardEntry) {
         guard let url = entry.fileURL else { return }
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.writeObjects([url as NSURL])
         pasteboard.setString(url.path, forType: .string)
         lastChangeCount = pasteboard.changeCount
+        sendPasteCommand()
     }
 
     func copyAndPaste(_ entry: ClipboardEntry) {

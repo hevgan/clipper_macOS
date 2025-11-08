@@ -16,7 +16,7 @@ struct ClipboardHistoryView: View {
                                 onSelect: { history.copyAndPaste(entry) },
                                 onToggleCensored: { history.toggleCensor(entry) },
                                 onDelete: { history.remove(entry) },
-                                onCopyPath: entry.fileURL != nil ? { history.copyPath(entry) } : nil
+                                onCopyPath: entry.fileURL != nil ? { history.copyPathAndPaste(entry) } : nil
                             )
                         }
                     }
