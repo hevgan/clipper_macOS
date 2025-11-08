@@ -3,7 +3,7 @@
 
 Clipper is a lightweight macOS menu bar helper inspired by the Windows clipboard history. It keeps the last 30 (customizable) items you copy (text or images), presents a quick popover anchored to the cursor, and lets you re-paste with a single click.
 
-![clipper menu](src/images/clipper-menu.png)
+![clipper main screen](src/images/clipper-main.png)
 
 ![clipper bar icon](src/images/clipper-bar-icon.png)
 
